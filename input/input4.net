@@ -1,0 +1,6 @@
+a INPUT
+b INPUT
+C OUTPUT
+t1 = NOT a
+t2 = NOT t1
+C = AND t2 b

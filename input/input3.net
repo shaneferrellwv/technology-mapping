@@ -1,0 +1,4 @@
+a INPUT
+A OUTPUT
+t1 = NOT a
+A = NOT t1

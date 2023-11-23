@@ -17,12 +17,14 @@ static unordered_map<string, Node*> constructedNodes;
 
 class Node
 {
+    // member variables
     string name;
     unsigned int id;
     Operator op;
     Node* parent;
     Node *left, *right;
 
+    // Node constructor
     Node(string name, Node* parent)
     {
         this->name = name;
@@ -36,7 +38,6 @@ class Node
         int i = 0;
         for (auto it = netlistLines.begin(); it != netlistLines.end(); ++it, i++)
         {
-
             string line = netlistLines[i];
 
             // INPUT / OUTPUT line
@@ -179,9 +180,80 @@ public:
         return constructDAGFromRoot(root, netlistLines);
     }
 
-    static Node* constructNandNotDAG(Node* andOrNotTreeRoot)
+    static Node* constructNandNotDAG(Node* root)
     {
+        if (constructedNodes.find(root->name) == constructedNodes.end())
+            return root;
+        else
+            constructedNodes.erase(root->name);
 
+        Node *right, *left;
+        left = root->left;
+        right = root->right;
+
+        // if not already a NAND or NOT gate, then convert to NAND and NOT gates
+        // a AND b --> NOT(a NAND b)
+        if (root->op == Operator::AND)
+        {
+            Node* nandNot = new Node(root->name + "NOT", root->parent);
+            nandNot->op = Operator::NOT;
+            nandNot->left = root;
+            nandNot->right = nullptr;
+            root->parent = nandNot;
+            root = nandNot;
+        }
+        // a OR b --> (NOT a) NAND (NOT B)
+        else if (root->op == Operator::OR)
+        {
+            Node* leftNot = new Node(root->left->name + "NOT", root->parent);
+            left->parent = leftNot;
+            leftNot->left = left;
+            root->left = leftNot;
+            leftNot->right = nullptr;
+            leftNot->parent = root;
+            leftNot->op = Operator::NOT;
+
+            Node* rightNot = new Node(root->right->name + "NOT", root->parent);
+            right->parent = rightNot;
+            rightNot->left = right;
+            root->right = rightNot;
+            rightNot->right = nullptr;
+            rightNot->parent = root;
+            rightNot->op = Operator::NOT;
+
+            root->op = Operator::NAND;
+            root->name += "NAND";
+        }
+
+        if (left)
+            constructNandNotDAG(left);
+        if (right)
+            constructNandNotDAG(right);
+            
+        return root;
+    }
+
+    static Node* simplify(Node* root)
+    {
+        if (root->op == Operator::INPUT)
+            return root;
+
+        if (root->op == Operator::NOT && root->left->op == Operator::NOT)
+        {
+            if (!root->parent)
+                return root->left->left;
+            
+            root->left->left->parent = root->parent;
+            root->parent->left = root->left->left;
+            root->left = nullptr;
+        }
+
+        if (root->left)
+            simplify(root->left);
+        if (root->right)
+            simplify(root->right);
+            
+        return root;
     }
 };
 
