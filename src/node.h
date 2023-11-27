@@ -28,8 +28,8 @@ class Node
     Node(string name, Node* parent)
     {
         this->name = name;
-        this->id = numberOfAndOrNotNodes++;
         this->parent = parent;
+        numberOfAndOrNotNodes++;
     }
 
     // construct root from OUTPUT line
@@ -182,11 +182,12 @@ public:
 
     static Node* constructNandNotDAG(Node* root)
     {
+        // base case: all nodes have been converted
         if (constructedNodes.find(root->name) == constructedNodes.end())
             return root;
         else
             constructedNodes.erase(root->name);
-
+            
         Node *right, *left;
         left = root->left;
         right = root->right;
@@ -225,6 +226,7 @@ public:
             root->name += "NAND";
         }
 
+        // recursively convert children
         if (left)
             constructNandNotDAG(left);
         if (right)
@@ -235,9 +237,11 @@ public:
 
     static Node* simplify(Node* root)
     {
+        // base case: input node
         if (root->op == Operator::INPUT)
             return root;
 
+        // if there are two NOTs in a row, simplify
         if (root->op == Operator::NOT && root->left->op == Operator::NOT)
         {
             if (!root->parent)
@@ -248,6 +252,7 @@ public:
             root->left = nullptr;
         }
 
+        // recursively simplify DAG
         if (root->left)
             simplify(root->left);
         if (root->right)

@@ -15,7 +15,6 @@ int main(int argc, char* argv[])
         Node* andOrNotDAGRoot = Node::constructAndOrNotDAG(fileName);
         Node* nandNotDAGRoot = Node::constructNandNotDAG(andOrNotDAGRoot);
         nandNotDAGRoot = Node::simplify(nandNotDAGRoot);
-        int hello = 0;
     }
     catch(const exception& e)
     {
