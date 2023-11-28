@@ -187,7 +187,7 @@ public:
             return root;
         else
             constructedNodes.erase(root->name);
-            
+
         Node *right, *left;
         left = root->left;
         right = root->right;
@@ -200,8 +200,19 @@ public:
             nandNot->op = Operator::NOT;
             nandNot->left = root;
             nandNot->right = nullptr;
+
+            // root is a right child
+            if (root->parent)
+            {
+                if (nandNot->parent->op == Operator::NAND && nandNot->parent->right == root)
+                    nandNot->parent->right = nandNot;
+                else
+                    nandNot->parent->left = nandNot;
+            }
+
             root->parent = nandNot;
-            root = nandNot;
+            root->op = Operator::NAND;
+            root->name += "NAND";
         }
         // a OR b --> (NOT a) NAND (NOT B)
         else if (root->op == Operator::OR)
@@ -248,8 +259,22 @@ public:
                 return root->left->left;
             
             root->left->left->parent = root->parent;
-            root->parent->left = root->left->left;
-            root->left = nullptr;
+
+            // root is a right child
+            if (root->parent->op == Operator::NAND)
+            {
+                if (root->parent->right == root)
+                {
+                    root->parent->right = root->left->left;
+                    simplify(root->parent->right);
+                }
+                else
+                {
+                    root->parent->left = root->left->left;
+                    simplify(root->parent->left);
+                }
+                root->left = nullptr;
+            }
         }
 
         // recursively simplify DAG
@@ -258,7 +283,10 @@ public:
         if (root->right)
             simplify(root->right);
             
-        return root;
+        if (root->parent && root->parent->op == Operator::NOT && !root->parent->parent)
+            return root->parent;
+        else
+            return root;
     }
 };
 
