@@ -39,7 +39,6 @@ string operatorToString(Operator op) {
 class Node
 {
     // member variables
-    string name;
 
     // construct root from OUTPUT line
     static Node *constructRoot(vector<string> &netlistLines)
@@ -175,6 +174,7 @@ public:
     unsigned int id;
     Node *parent;
     Node *left, *right;
+    string name;
 
     // Node constructor
     Node(string name, Node *parent)
@@ -336,6 +336,15 @@ public:
         }
     }
 
+    static void dynamicCostCalculation(){
+        //Get to bottom of tree
+        Node* currentNode = nodeLookup[0];
+        while(currentNode->left != nullptr){
+            currentNode = currentNode->left;
+        }
+
+    }
+
     static void outputTruthTable(Node* root) {
         if (!root) {
             throw runtime_error("The root node cannot be null.");
@@ -463,6 +472,12 @@ public:
                 nodeLookup[id] = node;
                 node->id = id--;
             }
+        }
+
+        //Print out what ids are assigned to what nodes
+        for (auto node : sorted) 
+        {
+            cout << node->name << " " << node->id << endl;
         }
     }
 };

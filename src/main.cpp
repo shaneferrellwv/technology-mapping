@@ -27,6 +27,9 @@ int main(int argc, char* argv[])
         Node::outputTruthTable(nandNotDAGRoot);
         cout << endl;
         nandNotDAGRoot = Node::simplify(nandNotDAGRoot);
+        // save the node lookup table
+        Node::saveDAG(nandNotDAGRoot);
+        
         Node::outputTruthTable(nandNotDAGRoot);
         cout << endl;
         Node::topologicalSortAndAssignIds(nandNotDAGRoot);

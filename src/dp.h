@@ -106,10 +106,86 @@ class dp
         minIndex = getMinIndex(numberOfNandNotNodes);
     }
 
-    void traceback(int row)
+    // get the children given a cost of the symbol
+    vector<Node*> getChildren(int cost, int index, int nodeIndex, int tab=0)
     {
-        // base case: input node
+        vector<Node*> children;
+        //tab
+        for(int i=0; i<tab; i++){
+            cout << "\t";
+        }
+        if(index==6){
+            // AO121 Gate
+            children.push_back(nodeLookup[nodeIndex]->left->left->left);
+            children.push_back(nodeLookup[nodeIndex]->left->left->right);
+            children.push_back(nodeLookup[nodeIndex]->left->right->left);
+            cout << "AO121 Gate" << endl;
+        }
+        else if(index==7){
+            // AO122 Gate
+            children.push_back(nodeLookup[nodeIndex]->left->left->left);
+            children.push_back(nodeLookup[nodeIndex]->left->left->right);
+            children.push_back(nodeLookup[nodeIndex]->left->right->left);
+            children.push_back(nodeLookup[nodeIndex]->left->right->right);
+            cout << "AO122 Gate" << endl;
+        }
+        else if(index==5){
+            // OR2
+            children.push_back(nodeLookup[nodeIndex]->left->left);
+            children.push_back(nodeLookup[nodeIndex]->right->left);
+            cout << "OR2 Gate" << endl;
+        }
+        else if(index==4){
+            // NOR2 gate
+            children.push_back(nodeLookup[nodeIndex]->left->left->left);
+            children.push_back(nodeLookup[nodeIndex]->left->right->left);
+            cout << "NOR2 Gate" << endl;
+        }
+        else if(index==3){
+            // AND2 gate
+            children.push_back(nodeLookup[nodeIndex]->left->left);
+            children.push_back(nodeLookup[nodeIndex]->left->right);
+            cout << "AND2 Gate" << endl;
+        }
+        else if(index==2){
+            // NAND2 gate
+            children.push_back(nodeLookup[nodeIndex]->left);
+            children.push_back(nodeLookup[nodeIndex]->right);
+            cout << "NAND2 Gate" << endl;
+        }
+        else if(index==1){
+            // NOT Gate
+            children.push_back(nodeLookup[nodeIndex]->left);
+            cout << "NOT Gate" << endl;
+        }
+        return children;
+    }
+
+    void traceback(int row, int tab = 0)
+    {
+        // Get the row array
+        minCost = getMin(row);
+        minIndex = getMinIndex(row);
         
+        // Get the children
+        vector<Node*> children = getChildren(minCost, minIndex, row, tab);
+        tab++;
+        for (int i = 0; i < children.size(); i++)
+        {   
+            for(int i=0; i<tab; i++){
+                cout << "\t";
+            }
+            cout << "Child: " << i << endl;
+            if(children[i]->id == 0){
+                for(int i=0; i<tab; i++){
+                    cout << "\t";
+                }
+                cout << "Found primary input: " << children[i]->name << endl;
+            }else{
+                traceback(children[i]->id, tab);
+            }
+        }
+
     }
 
 public:
@@ -118,6 +194,29 @@ public:
     {
         allocate2DArray();
         solve();
-        traceback(minIndex);
+        // print out the minimum cost table with proper formatting and prints out inf if infinity. Also should print row label which is name of node at that index
+        cout << "Minimum Cost Table" << endl;
+        cout << "------------------" << endl;
+        cout << "Node\t";
+        for (int i = 0; i <= 7; i++)
+            cout << i << "\t";
+        cout << endl;
+        for (int i = 0; i <= numberOfNandNotNodes; i++)
+        {
+            if(i==0){
+                cout << "Primary Inputs\t";
+            }else{
+            cout << nodeLookup[i]->name << "\t";
+            for (int j = 0; j <= 7; j++)
+            {
+                if (A[i][j] == infinity)
+                    cout << "inf\t";
+                else
+                    cout << A[i][j] << "\t";
+            }
+            }
+            cout << endl;
+        }
+        traceback(numberOfNandNotNodes);
     }
 };
