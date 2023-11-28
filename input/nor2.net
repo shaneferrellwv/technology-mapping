@@ -1,0 +1,5 @@
+a INPUT
+b INPUT
+X OUTPUT
+t1 = OR a b
+X = NOT t1
