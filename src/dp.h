@@ -169,6 +169,10 @@ class dp
         
         // Get the children
         vector<Node*> children = getChildren(minCost, minIndex, row, tab);
+        for(int i=0; i<tab; i++){
+            cout << "\t";
+        }
+        cout << "Found node: " << nodeLookup[row]->name << endl;
         tab++;
         for (int i = 0; i < children.size(); i++)
         {   
