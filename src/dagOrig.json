@@ -1,0 +1,24 @@
+{
+    "left": {
+        "left": {
+            "name": "a",
+            "operator": 4
+        },
+        "name": "t1",
+        "operator": 0,
+        "right": {
+            "name": "b",
+            "operator": 4
+        }
+    },
+    "name": "F",
+    "operator": 1,
+    "right": {
+        "left": {
+            "name": "c",
+            "operator": 4
+        },
+        "name": "t2",
+        "operator": 2
+    }
+}

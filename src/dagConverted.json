@@ -1,0 +1,46 @@
+{
+    "left": {
+        "left": {
+            "left": {
+                "left": {
+                    "left": null,
+                    "name": "a",
+                    "operator": "INPUT",
+                    "right": null
+                },
+                "name": "t1NAND",
+                "operator": "NAND",
+                "right": {
+                    "left": null,
+                    "name": "b",
+                    "operator": "INPUT",
+                    "right": null
+                }
+            },
+            "name": "t1",
+            "operator": "NOT",
+            "right": null
+        },
+        "name": "t1NOT",
+        "operator": "NOT",
+        "right": null
+    },
+    "name": "F",
+    "operator": "NAND",
+    "right": {
+        "left": {
+            "left": {
+                "left": null,
+                "name": "c",
+                "operator": "INPUT",
+                "right": null
+            },
+            "name": "t2",
+            "operator": "NOT",
+            "right": null
+        },
+        "name": "t2NOT",
+        "operator": "NOT",
+        "right": null
+    }
+}

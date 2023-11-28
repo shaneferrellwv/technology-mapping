@@ -1,0 +1,26 @@
+{
+    "left": {
+        "left": {
+            "left": null,
+            "name": "a",
+            "operator": "INPUT",
+            "right": null
+        },
+        "name": "t1NAND",
+        "operator": "NAND",
+        "right": {
+            "left": null,
+            "name": "b",
+            "operator": "INPUT",
+            "right": null
+        }
+    },
+    "name": "F",
+    "operator": "NAND",
+    "right": {
+        "left": null,
+        "name": "c",
+        "operator": "INPUT",
+        "right": null
+    }
+}
