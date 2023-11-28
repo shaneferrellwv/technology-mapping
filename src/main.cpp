@@ -1,10 +1,8 @@
 #include <iostream>
 
-#include "node.h"
+#include "dp.h"
 
 using namespace std;
-
-const int infinity = 99999999;
 
 int main(int argc, char* argv[])
 {
@@ -17,7 +15,7 @@ int main(int argc, char* argv[])
     // if no file name is given, use the default input/input1.net
     if(fileName == "")
     {
-        fileName = "input1.net";
+        fileName = "input5.net";
     }
 
     try
@@ -32,7 +30,9 @@ int main(int argc, char* argv[])
         Node::outputTruthTable(nandNotDAGRoot);
         cout << endl;
         Node::topologicalSortAndAssignIds(nandNotDAGRoot);
-        
+        cout << endl;
+
+        dp();
         cout << endl;
     }
     catch(const exception& e)

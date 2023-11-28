@@ -23,6 +23,7 @@ enum class Operator
 
 static int numberOfNandNotNodes = 0;
 static unordered_map<string, Node *> constructedNodes;
+static unordered_map<int, Node*> nodeLookup;
 
 string operatorToString(Operator op) {
     switch (op) {
@@ -39,7 +40,6 @@ class Node
 {
     // member variables
     string name;
-    unsigned int id;
 
     // construct root from OUTPUT line
     static Node *constructRoot(vector<string> &netlistLines)
@@ -172,6 +172,7 @@ class Node
 
 public:
     Operator op;
+    unsigned int id;
     Node *parent;
     Node *left, *right;
 
@@ -428,15 +429,6 @@ public:
         return root;
     }
 
-
-
-
-
-
-
-
-
-
     static void dfs(Node* node, std::vector<Node*>& sorted)
     {
         if (!node)
@@ -454,19 +446,25 @@ public:
 
     static void topologicalSortAndAssignIds(Node* root)
     {
-        std::vector<Node*> sorted;
+        vector<Node*> sorted;
         dfs(root, sorted);
 
-        // Reverse the order to get topological sort
+        // reverse the order to get topological sort
         std::reverse(sorted.begin(), sorted.end());
 
-        // Assign IDs
+        // assign IDs
         int id = numberOfNandNotNodes;
-        for (auto node : sorted) {
-            if (!node->left && !node->right) 
-                node->id = 0; // Leaf node
+        for (auto node : sorted) 
+        {
+            if (!node->left && !node->right)
+                node->id = 0; // leaf node
             else 
+            {
+                nodeLookup[id] = node;
                 node->id = id--;
+            }
         }
     }
+
+
 };
