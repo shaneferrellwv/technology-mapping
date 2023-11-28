@@ -21,7 +21,7 @@ enum class Operator
     INPUT
 };
 
-static int numberOfAndOrNotNodes = 0;
+static int numberOfNandNotNodes = 0;
 static unordered_map<string, Node *> constructedNodes;
 
 string operatorToString(Operator op) {
@@ -34,11 +34,13 @@ string operatorToString(Operator op) {
         default:             return "UNKNOWN";
     }
 }
+
 class Node
 {
     // member variables
     string name;
     unsigned int id;
+
     // construct root from OUTPUT line
     static Node *constructRoot(vector<string> &netlistLines)
     {
@@ -172,13 +174,14 @@ public:
     Operator op;
     Node *parent;
     Node *left, *right;
+
     // Node constructor
     Node(string name, Node *parent)
     {
         this->name = name;
         this->parent = parent;
-        numberOfAndOrNotNodes++;
     }
+
     static void saveDAG(Node *root)
     {
         json j;
@@ -265,61 +268,6 @@ public:
         return constructDAGFromRoot(root, netlistLines);
     }
 
-    // static Node* constructNandNotDAG(Node* root)
-    // {
-    //     // base case: all nodes have been converted
-    //     if (constructedNodes.find(root->name) == constructedNodes.end())
-    //         return root;
-    //     else
-    //         constructedNodes.erase(root->name);
-
-    //     Node *right, *left;
-    //     left = root->left;
-    //     right = root->right;
-
-    //     // if not already a NAND or NOT gate, then convert to NAND and NOT gates
-    //     // a AND b --> NOT(a NAND b)
-    //     if (root->op == Operator::AND)
-    //     {
-    //         Node* nandNot = new Node(root->name + "NOT", root->parent);
-    //         nandNot->op = Operator::NOT;
-    //         nandNot->left = root;
-    //         nandNot->right = nullptr;
-    //         root->parent = nandNot;
-    //         root = nandNot;
-    //     }
-    //     // a OR b --> (NOT a) NAND (NOT B)
-    //     else if (root->op == Operator::OR)
-    //     {
-    //         Node* leftNot = new Node(root->left->name + "NOT", root->parent);
-    //         left->parent = leftNot;
-    //         leftNot->left = left;
-    //         root->left = leftNot;
-    //         leftNot->right = nullptr;
-    //         leftNot->parent = root;
-    //         leftNot->op = Operator::NOT;
-
-    //         Node* rightNot = new Node(root->right->name + "NOT", root->parent);
-    //         right->parent = rightNot;
-    //         rightNot->left = right;
-    //         root->right = rightNot;
-    //         rightNot->right = nullptr;
-    //         rightNot->parent = root;
-    //         rightNot->op = Operator::NOT;
-
-    //         root->op = Operator::NAND;
-    //         root->name += "NAND";
-    //     }
-
-    //     // recursively convert children
-    //     if (left)
-    //         constructNandNotDAG(left);
-    //     if (right)
-    //         constructNandNotDAG(right);
-
-    //     return root;
-    // }
-
     static Node *constructNandNotDAG(Node *root)
     {
         if (!root)
@@ -369,42 +317,6 @@ public:
 
         return root;
     }
-
-    static bool isDoubleNot(Node* node) {
-        return node->op == Operator::NOT && node->left && node->left->op == Operator::NOT;
-    }
-
-    // Helper function to check if a node is a NAND gate with both inputs the same
-    static bool isNandWithSameInputs(Node* node) {
-        return node->op == Operator::NAND && node->left == node->right;
-    }
-
-    // static Node *simplify(Node *root)
-    // {
-    //     // base case: input node
-    //     if (root->op == Operator::INPUT)
-    //         return root;
-
-    //     // if there are two NOTs in a row, simplify
-    //     if (root->op == Operator::NOT && root->left->op == Operator::NOT)
-    //     {
-    //         if (!root->parent)
-    //             return root->left->left;
-
-    //         root->left->left->parent = root->parent;
-    //         root->parent->left = root->left->left;
-    //         root->left = nullptr;
-    //     }
-
-    //     // recursively simplify DAG
-    //     if (root->left)
-    //         simplify(root->left);
-    //     if (root->right)
-    //         simplify(root->right);
-
-    //     return root;
-    // }
-    // Function to simplify double NOTs and NAND gates with the same inputs
 
     bool evaluate(const unordered_map<string, bool>& inputValues) {
         switch(op) {
@@ -462,28 +374,39 @@ public:
         }
     }
 
+    // Helper function to check if a node is a NAND gate with both inputs the same
+    static bool isNandWithSameInputs(Node* node) {
+        return node->op == Operator::NAND && node->left == node->right;
+    }
+
+    static bool isDoubleNot(Node* node) {
+        return node->op == Operator::NOT && node->left && node->left->op == Operator::NOT;
+    }
+
     static Node* simplify(Node* root) {
+        // Base case: node doesn't exist
         if (!root) {
-            // std::cout << "Reached a null node, returning." << std::endl;
             return nullptr;
         }
 
-        // std::cout << "Simplifying node: " << root->name << " with operator: " << operatorToString(root->op) << std::endl;
-
-        // Recursively simplify children first
+        // Recursively simplify children
         root->left = simplify(root->left);
         root->right = simplify(root->right);
 
         // Simplify double NOTs
-        if (isDoubleNot(root)) {
-            // std::cout << "Simplifying double NOT at node: " << root->name << std::endl;
+        if (isDoubleNot(root))
+        {
             Node* childOfNot = root->left->left;
+
             // If the root is the top node, we don't have to worry about the parent
-            if (!root->parent) {
+            if (!root->parent)
+            {
                 delete root->left; // Free the immediate NOT gate
                 delete root;       // Free the top NOT gate
                 return childOfNot; // Return the child
-            } else {
+            } 
+            else 
+            {
                 // If the root is not the top node, rewire the parent to bypass the double NOT
                 if (root->parent->left == root) root->parent->left = childOfNot;
                 if (root->parent->right == root) root->parent->right = childOfNot;
@@ -495,189 +418,55 @@ public:
         }
 
         // Simplify NAND gates with the same inputs
-        if (isNandWithSameInputs(root)) {
-            // std::cout << "Simplifying NAND with same inputs at node: " << root->name << std::endl;
+        if (isNandWithSameInputs(root)) 
+        {
             root->op = Operator::NOT; // Convert the NAND to a NOT
             delete root->right;       // Free the redundant right child
             root->right = nullptr;    // Set the right child to nullptr
         }
 
-        // Simplify other patterns if needed
-
         return root;
     }
-};
 
-class Library{
-    private:
-        Node *NOTStructure = new Node("", nullptr);
-        Node *NAND2Structure = new Node("", nullptr);
-        Node *AND2Structure = new Node("", nullptr);
-        Node *NOR2Structure = new Node("", nullptr);
-        Node *OR2Structure = new Node("", nullptr);
-        Node *AOI21Structure = new Node("", nullptr);
-        Node *AOI22Structure = new Node("", nullptr);
 
-        bool areStructurallyEquivalent(Node* a, Node* b) {
-            if (a == nullptr && b == nullptr) {
-                return true;
-            }
-            if (a == nullptr || b == nullptr) {
-                return false;
-            }
-            
-            if(b->op == Operator::INPUT) {
-                return true;
-            }
 
-            if (a->op != b->op) {
-                return false;
-            }
-            return areStructurallyEquivalent(a->left, b->left) && areStructurallyEquivalent(a->right, b->right);
+
+
+
+
+
+
+
+    static void dfs(Node* node, std::vector<Node*>& sorted)
+    {
+        if (!node)
+            return;
+        if (node->left)
+            dfs(node->left, sorted);
+        if (node->right)
+            dfs(node->right, sorted);
+
+        if (node->op != Operator::INPUT)
+            numberOfNandNotNodes++;
+
+        sorted.push_back(node);
+    }
+
+    static void topologicalSortAndAssignIds(Node* root)
+    {
+        std::vector<Node*> sorted;
+        dfs(root, sorted);
+
+        // Reverse the order to get topological sort
+        std::reverse(sorted.begin(), sorted.end());
+
+        // Assign IDs
+        int id = numberOfNandNotNodes;
+        for (auto node : sorted) {
+            if (!node->left && !node->right) 
+                node->id = 0; // Leaf node
+            else 
+                node->id = id--;
         }
-    
-    public:
-        // Library constructor
-        Library()
-        {
-            NOTStructure->op = Operator::NOT;
-            Node *NOTStructureLeft = new Node("", NOTStructure);
-            NOTStructureLeft->op = Operator::INPUT;
-            NOTStructure->left = NOTStructureLeft;
-
-            NAND2Structure->op = Operator::NAND;
-            Node *NAND2StructureLeft = new Node("", NAND2Structure);
-            Node *NAND2StructureRight = new Node("", NAND2Structure);
-            NAND2StructureLeft->op = Operator::INPUT;
-            NAND2StructureRight->op = Operator::INPUT;
-            NAND2Structure->left = NAND2StructureLeft;
-            NAND2Structure->right = NAND2StructureRight;
-
-            AND2Structure->op = Operator::NOT;
-            Node *AND2StructureLeft = new Node("", AND2Structure);
-            AND2StructureLeft->op = Operator::NAND;
-            Node *AND2StructureLeftLeft = new Node("", AND2StructureLeft);
-            Node *AND2StructureLeftRight = new Node("", AND2StructureLeft);
-            AND2StructureLeftLeft->op = Operator::INPUT;
-            AND2StructureLeftRight->op = Operator::INPUT;
-            AND2StructureLeft->left = AND2StructureLeftLeft;
-            AND2StructureLeft->right = AND2StructureLeftRight;
-            AND2Structure->left = AND2StructureLeft;
-
-            NOR2Structure->op = Operator::NOT;
-            Node *NOR2StructureLeft = new Node("", NOR2Structure);
-            NOR2StructureLeft->op = Operator::NAND;
-            Node *NOR2StructureLeftLeft = new Node("", NOR2StructureLeft);
-            Node *NOR2StructureLeftRight = new Node("", NOR2StructureLeft);
-            NOR2StructureLeftLeft->op = Operator::NOT;
-            NOR2StructureLeftRight->op = Operator::NOT;
-            Node *NOR2StructureLeftLeftLeft = new Node("", NOR2StructureLeftLeft);
-            Node *NOR2StructureLeftRightLeft = new Node("", NOR2StructureLeftRight);
-            NOR2StructureLeftLeftLeft->op = Operator::INPUT;
-            NOR2StructureLeftRightLeft->op = Operator::INPUT;
-            NOR2StructureLeftLeft->left = NOR2StructureLeftLeftLeft;
-            NOR2StructureLeftRight->left = NOR2StructureLeftRightLeft;
-            NOR2StructureLeft->left = NOR2StructureLeftLeft;
-            NOR2StructureLeft->right = NOR2StructureLeftRight;
-            NOR2Structure->left = NOR2StructureLeft;
-
-
-
-            OR2Structure->op = Operator::NAND;
-            Node *OR2StructureLeft = new Node("", OR2Structure);
-            Node *OR2StructureRight = new Node("", OR2Structure);
-            OR2StructureLeft->op = Operator::NOT;
-            OR2StructureRight->op = Operator::NOT;
-            Node *OR2StructureLeftLeft = new Node("", OR2StructureLeft);
-            Node *OR2StructureRightLeft = new Node("", OR2StructureRight);
-            OR2StructureLeftLeft->op = Operator::INPUT;
-            OR2StructureRightLeft->op = Operator::INPUT;
-            OR2StructureLeft->left = OR2StructureLeftLeft;
-            OR2StructureRight->left = OR2StructureRightLeft;
-            OR2Structure->left = OR2StructureLeft;
-            OR2Structure->right = OR2StructureRight;
-
-            AOI21Structure->op = Operator::NOT;
-            Node *AOI21StructureLeft = new Node("", AOI21Structure);
-            AOI21StructureLeft->op = Operator::NAND;
-            Node *AOI21StructureLeftLeft = new Node("", AOI21StructureLeft);
-            Node *AOI21StructureLeftRight = new Node("", AOI21StructureLeft);
-            AOI21StructureLeftLeft->op = Operator::NAND;
-            Node *AOI21StructureLeftLeftLeft = new Node("", AOI21StructureLeftLeft);
-            Node *AOI21StructureLeftLeftRight = new Node("", AOI21StructureLeftLeft);
-            AOI21StructureLeftLeftLeft->op = Operator::INPUT;
-            AOI21StructureLeftLeftRight->op = Operator::INPUT;
-            AOI21StructureLeftLeft->left = AOI21StructureLeftLeftLeft;
-            AOI21StructureLeftLeft->right = AOI21StructureLeftLeftRight;
-            AOI21StructureLeftRight->op = Operator::NOT;
-            Node *AOI21StructureLeftRightLeft = new Node("", AOI21StructureLeftRight);
-            AOI21StructureLeftRightLeft->op = Operator::INPUT;
-            AOI21StructureLeftRight->left = AOI21StructureLeftRightLeft;
-            AOI21StructureLeft->left = AOI21StructureLeftLeft;
-            AOI21StructureLeft->right = AOI21StructureLeftRight;
-            AOI21Structure->left = AOI21StructureLeft;
-
-            AOI22Structure->op = Operator::NOT;
-            Node *AOI22StructureLeft = new Node("", AOI22Structure);
-            AOI22StructureLeft->op = Operator::NAND;
-            Node *AOI22StructureLeftLeft = new Node("", AOI22StructureLeft);
-            Node *AOI22StructureLeftRight = new Node("", AOI22StructureLeft);
-            AOI22StructureLeftLeft->op = Operator::NAND;
-            Node *AOI22StructureLeftLeftLeft = new Node("", AOI22StructureLeftLeft);
-            Node *AOI22StructureLeftLeftRight = new Node("", AOI22StructureLeftLeft);
-            AOI22StructureLeftLeftLeft->op = Operator::INPUT;
-            AOI22StructureLeftLeftRight->op = Operator::INPUT;
-            AOI22StructureLeftLeft->left = AOI22StructureLeftLeftLeft;
-            AOI22StructureLeftLeft->right = AOI22StructureLeftLeftRight;
-            AOI22StructureLeftRight->op = Operator::NAND;
-            Node *AOI22StructureLeftRightLeft = new Node("", AOI22StructureLeftRight);
-            Node *AOI22StructureLeftRightRight = new Node("", AOI22StructureLeftRight);
-            AOI22StructureLeftRightLeft->op = Operator::INPUT;
-            AOI22StructureLeftRightRight->op = Operator::INPUT;
-            AOI22StructureLeftRight->left = AOI22StructureLeftRightLeft;
-            AOI22StructureLeftRight->right = AOI22StructureLeftRightRight;
-            AOI22StructureLeft->left = AOI22StructureLeftLeft;
-            AOI22StructureLeft->right = AOI22StructureLeftRight;
-            AOI22Structure->left = AOI22StructureLeft;
-        }
-
-        vector<string> findMatchingStructures(Node* topNode) {
-            vector<string> matchingStructures;
-
-            // Recursive lambda to traverse the DAG and match with template structures
-            std::function<void(Node*, const string&)> traverse = [&](Node* node, const string& structureName) {
-                if (!node) return;
-                
-                if (structureName == "NOT" && areStructurallyEquivalent(node, NOTStructure)) {
-                    matchingStructures.push_back("NOT");
-                } else if (structureName == "NAND2" && areStructurallyEquivalent(node, NAND2Structure)) {
-                    matchingStructures.push_back("NAND2");
-                } else if (structureName == "AND2" && areStructurallyEquivalent(node, AND2Structure)) {
-                    matchingStructures.push_back("AND2");
-                } else if (structureName == "NOR2" && areStructurallyEquivalent(node, NOR2Structure)) {
-                    matchingStructures.push_back("NOR2");
-                } else if (structureName == "OR2" && areStructurallyEquivalent(node, OR2Structure)) {
-                    matchingStructures.push_back("OR2");
-                } else if (structureName == "AOI21" && areStructurallyEquivalent(node, AOI21Structure)) {
-                    matchingStructures.push_back("AOI21");
-                } else if (structureName == "AOI22" && areStructurallyEquivalent(node, AOI22Structure)) {
-                    matchingStructures.push_back("AOI22");
-                }
-
-                // Continue traversal
-                traverse(node->left, structureName);
-                traverse(node->right, structureName);
-            };
-
-            // Start the traversal from the top node
-            traverse(topNode, "NOT");
-            traverse(topNode, "NAND2");
-            traverse(topNode, "AND2");
-            traverse(topNode, "NOR2");
-            traverse(topNode, "OR2");
-            traverse(topNode, "AOI21");
-            traverse(topNode, "AOI22");
-
-            return matchingStructures;
-        }
+    }
 };

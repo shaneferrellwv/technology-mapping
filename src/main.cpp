@@ -22,8 +22,6 @@ int main(int argc, char* argv[])
 
     try
     {
-        Library* library = new Library();
-
         Node* andOrNotDAGRoot = Node::constructAndOrNotDAG(fileName);
         Node::outputTruthTable(andOrNotDAGRoot);
         cout << endl;
@@ -33,13 +31,9 @@ int main(int argc, char* argv[])
         nandNotDAGRoot = Node::simplify(nandNotDAGRoot);
         Node::outputTruthTable(nandNotDAGRoot);
         cout << endl;
-
-        // Find matching sturctures
-        vector<string> structures = library->findMatchingStructures(nandNotDAGRoot);
-        for(int i = 0; i < structures.size(); i++)
-        {
-            cout << structures[i] << endl;
-        }
+        Node::topologicalSortAndAssignIds(nandNotDAGRoot);
+        
+        cout << endl;
     }
     catch(const exception& e)
     {
