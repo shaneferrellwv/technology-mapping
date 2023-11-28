@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
     }
     catch(const exception& e)
     {
-        cerr << e.what() << endl;
+        cout << e.what() << endl;
     }
 
     return 0;
