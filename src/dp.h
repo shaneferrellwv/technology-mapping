@@ -109,10 +109,7 @@ class dp
     void traceback(int row)
     {
         // base case: input node
-        if (nodeLookup[row]->op == Operator::INPUT)
-        {
-            Node* node = new LibraryNode(name, INPUT)
-        }
+        
     }
 
 public:
@@ -121,6 +118,6 @@ public:
     {
         allocate2DArray();
         solve();
-        traceback();
+        traceback(minIndex);
     }
 };
