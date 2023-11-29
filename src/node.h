@@ -23,16 +23,24 @@ enum class Operator
 
 static int numberOfNandNotNodes = 0;
 static unordered_map<string, Node *> constructedNodes;
-static unordered_map<int, Node*> nodeLookup;
+static unordered_map<int, Node *> nodeLookup;
 
-string operatorToString(Operator op) {
-    switch (op) {
-        case Operator::AND:  return "AND";
-        case Operator::OR:   return "OR";
-        case Operator::NOT:  return "NOT";
-        case Operator::NAND: return "NAND";
-        case Operator::INPUT:return "INPUT";
-        default:             return "UNKNOWN";
+string operatorToString(Operator op)
+{
+    switch (op)
+    {
+    case Operator::AND:
+        return "AND";
+    case Operator::OR:
+        return "OR";
+    case Operator::NOT:
+        return "NOT";
+    case Operator::NAND:
+        return "NAND";
+    case Operator::INPUT:
+        return "INPUT";
+    default:
+        return "UNKNOWN";
     }
 }
 
@@ -319,43 +327,51 @@ public:
         return root;
     }
 
-    bool evaluate(const unordered_map<string, bool>& inputValues) {
-        switch(op) {
-            case Operator::AND:
-                return left->evaluate(inputValues) && right->evaluate(inputValues);
-            case Operator::OR:
-                return left->evaluate(inputValues) || right->evaluate(inputValues);
-            case Operator::NOT:
-                return !left->evaluate(inputValues);
-            case Operator::NAND:
-                return !(left->evaluate(inputValues) && right->evaluate(inputValues));
-            case Operator::INPUT:
-                return inputValues.at(name);
-            default:
-                throw runtime_error("Unknown operator.");
+    bool evaluate(const unordered_map<string, bool> &inputValues)
+    {
+        switch (op)
+        {
+        case Operator::AND:
+            return left->evaluate(inputValues) && right->evaluate(inputValues);
+        case Operator::OR:
+            return left->evaluate(inputValues) || right->evaluate(inputValues);
+        case Operator::NOT:
+            return !left->evaluate(inputValues);
+        case Operator::NAND:
+            return !(left->evaluate(inputValues) && right->evaluate(inputValues));
+        case Operator::INPUT:
+            return inputValues.at(name);
+        default:
+            throw runtime_error("Unknown operator.");
         }
     }
 
-    static void dynamicCostCalculation(){
-        //Get to bottom of tree
-        Node* currentNode = nodeLookup[0];
-        while(currentNode->left != nullptr){
+    static void dynamicCostCalculation()
+    {
+        // Get to bottom of tree
+        Node *currentNode = nodeLookup[0];
+        while (currentNode->left != nullptr)
+        {
             currentNode = currentNode->left;
         }
-
     }
 
-    static void outputTruthTable(Node* root) {
-        if (!root) {
+    static void outputTruthTable(Node *root)
+    {
+        if (!root)
+        {
             throw runtime_error("The root node cannot be null.");
         }
 
         // Step 1: Collect all input nodes
         vector<string> inputs;
-        unordered_map<string, Node*> nodes;
-        std::function<void(Node*)> collectInputs = [&](Node* node) {
-            if (!node) return;
-            if (node->op == Operator::INPUT && find(inputs.begin(), inputs.end(), node->name) == inputs.end()) {
+        unordered_map<string, Node *> nodes;
+        std::function<void(Node *)> collectInputs = [&](Node *node)
+        {
+            if (!node)
+                return;
+            if (node->op == Operator::INPUT && find(inputs.begin(), inputs.end(), node->name) == inputs.end())
+            {
                 inputs.push_back(node->name);
             }
             nodes[node->name] = node;
@@ -369,10 +385,12 @@ public:
         size_t numCombinations = 1 << numInputs; // 2^n combinations
 
         // Step 3: Evaluate the logical expression for each combination
-        for (size_t i = 0; i < numCombinations; ++i) {
+        for (size_t i = 0; i < numCombinations; ++i)
+        {
             unordered_map<string, bool> inputValues;
             cout << "Inputs: ";
-            for (size_t j = 0; j < numInputs; ++j) {
+            for (size_t j = 0; j < numInputs; ++j)
+            {
                 bool value = (i >> j) & 1;
                 inputValues[inputs[j]] = value;
                 cout << inputs[j] << "=" << value << " ";
@@ -385,17 +403,21 @@ public:
     }
 
     // Helper function to check if a node is a NAND gate with both inputs the same
-    static bool isNandWithSameInputs(Node* node) {
+    static bool isNandWithSameInputs(Node *node)
+    {
         return node->op == Operator::NAND && node->left == node->right;
     }
 
-    static bool isDoubleNot(Node* node) {
+    static bool isDoubleNot(Node *node)
+    {
         return node->op == Operator::NOT && node->left && node->left->op == Operator::NOT;
     }
 
-    static Node* simplify(Node* root) {
+    static Node *simplify(Node *root)
+    {
         // Base case: node doesn't exist
-        if (!root) {
+        if (!root)
+        {
             return nullptr;
         }
 
@@ -406,7 +428,7 @@ public:
         // Simplify double NOTs
         if (isDoubleNot(root))
         {
-            Node* childOfNot = root->left->left;
+            Node *childOfNot = root->left->left;
 
             // If the root is the top node, we don't have to worry about the parent
             if (!root->parent)
@@ -414,12 +436,14 @@ public:
                 delete root->left; // Free the immediate NOT gate
                 delete root;       // Free the top NOT gate
                 return childOfNot; // Return the child
-            } 
-            else 
+            }
+            else
             {
                 // If the root is not the top node, rewire the parent to bypass the double NOT
-                if (root->parent->left == root) root->parent->left = childOfNot;
-                if (root->parent->right == root) root->parent->right = childOfNot;
+                if (root->parent->left == root)
+                    root->parent->left = childOfNot;
+                if (root->parent->right == root)
+                    root->parent->right = childOfNot;
                 childOfNot->parent = root->parent;
                 delete root->left; // Free the immediate NOT gate
                 delete root;       // Free the current root
@@ -428,7 +452,7 @@ public:
         }
 
         // Simplify NAND gates with the same inputs
-        if (isNandWithSameInputs(root)) 
+        if (isNandWithSameInputs(root))
         {
             root->op = Operator::NOT; // Convert the NAND to a NOT
             delete root->right;       // Free the redundant right child
@@ -438,7 +462,7 @@ public:
         return root;
     }
 
-    static void dfs(Node* node, std::vector<Node*>& sorted)
+    static void dfs(Node *node, std::vector<Node *> &sorted)
     {
         if (!node)
             return;
@@ -453,9 +477,9 @@ public:
         sorted.push_back(node);
     }
 
-    static void topologicalSortAndAssignIds(Node* root)
+    static void topologicalSortAndAssignIds(Node *root)
     {
-        vector<Node*> sorted;
+        vector<Node *> sorted;
         dfs(root, sorted);
 
         // reverse the order to get topological sort
@@ -463,19 +487,19 @@ public:
 
         // assign IDs
         int id = numberOfNandNotNodes;
-        for (auto node : sorted) 
+        for (auto node : sorted)
         {
             if (!node->left && !node->right)
                 node->id = 0; // leaf node
-            else 
+            else
             {
                 nodeLookup[id] = node;
                 node->id = id--;
             }
         }
 
-        //Print out what ids are assigned to what nodes
-        for (auto node : sorted) 
+        // Print out what ids are assigned to what nodes
+        for (auto node : sorted)
         {
             cout << node->name << " " << node->id << endl;
         }

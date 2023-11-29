@@ -1,6 +1,12 @@
+#include <fstream>
+#include <unordered_set>
+
 #include "node.h"
 
+using namespace std;
+
 const int infinity = 99999999;
+static unordered_set<string> definedExpressions;
 
 class dp
 {
@@ -161,34 +167,167 @@ class dp
         return children;
     }
 
-    void traceback(int row, int tab = 0)
+    // utility to determine if an expression has been defined
+    static bool isDefined(Node* node)
     {
-        // Get the row array
-        minCost = getMin(row);
-        minIndex = getMinIndex(row);
+        string expressionName;
+        if (node->op == Operator::INPUT)
+            expressionName = node->name;
+        else
+            expressionName = "t" + node->id;
+
+        if (definedExpressions.find(expressionName) != definedExpressions.end())
+            return true;
+        else
+            return false;
+    }
+
+    string define(Node* root, vector<string>& output)
+    {
+        static bool isOutputDefined = false;
+        if (!isOutputDefined)
+        {
+            isOutputDefined = true;
+            definedExpressions.insert(root->name);
+            output.push_back(root->name + " OUTPUT");
+            return define(root, output);
+        }
+
+        // base case: defined expression
+        if (isDefined(root))
+        {
+            if (root->op == Operator::INPUT)
+                return root->name;
+            else
+                return "t" + root->id;
+        }
+
+        // else write definition
+        switch (getMinIndex(root->id))
+        {
+            case 0: 
+            {
+                output.push_back(root->name + " INPUT");
+                // definedExpressions.insert(root->name); // try commenting this out seems unnecessary
+                return root->name;
+            }
+            case 1:
+            {
+                Node* child1 = root->left;
+                string expr1 = define(child1, output);
+                definedExpressions.insert(expr1);
+                output.push_back("t" + to_string(root->id) + " = NOT " + expr1);
+                return "t" + to_string(root->id);
+            }
+            case 2:
+            {
+                Node* child1 = root->left;
+                Node* child2 = root->right;
+                string expr1 = define(child1, output);
+                string expr2 = define(child2, output);
+                definedExpressions.insert(expr1);
+                definedExpressions.insert(expr2);
+                output.push_back("t" + to_string(root->id) + " = NAND2 " + expr1 + " " + expr2);
+                return "t" + to_string(root->id);
+            }
+            case 3:
+            {
+                Node* child1 = root->left->left;
+                Node* child2 = root->left->right;
+                string expr1 = define(child1, output);
+                string expr2 = define(child2, output);
+                definedExpressions.insert(expr1);
+                definedExpressions.insert(expr2);
+                output.push_back("t" + to_string(root->id) + " = AND2 " + expr1 + " " + expr2);
+                return "t" + to_string(root->id);
+            }
+            case 4:
+            {
+                Node* child1 = root->left->left->left;
+                Node* child2 = root->left->right->left;
+                string expr1 = define(child1, output);
+                string expr2 = define(child2, output);
+                definedExpressions.insert(expr1);
+                definedExpressions.insert(expr2);
+                output.push_back("t" + to_string(root->id) + " = NOR2 " + expr1 + " " + expr2);
+                return "t" + to_string(root->id);
+            }
+            case 5:
+            {
+                Node* child1 = root->left->left;
+                Node* child2 = root->right->left;
+                string expr1 = define(child1, output);
+                string expr2 = define(child2, output);
+                definedExpressions.insert(expr1);
+                definedExpressions.insert(expr2);
+                output.push_back("t" + to_string(root->id) + " = OR2 " + expr1 + " " + expr2);
+                return "t" + to_string(root->id);
+            }
+            case 6:
+            {
+                Node* child1 = root->left->left->left;
+                Node* child2 = root->left->left->right;
+                Node* child3 = root->left->right->left;
+                string expr1 = define(child1, output);
+                string expr2 = define(child2, output);
+                string expr3 = define(child3, output);
+                definedExpressions.insert(expr1);
+                definedExpressions.insert(expr2);
+                definedExpressions.insert(expr3);
+                output.push_back("t" + to_string(root->id) + " = AO121 " + expr1 + " " + expr2 + " " + expr3);
+                return "t" + to_string(root->id);
+            }
+            case 7:
+            {
+                Node* child1 = root->left->left->left;
+                Node* child2 = root->left->left->right;
+                Node* child3 = root->left->right->left;
+                Node* child4 = root->left->right->right;
+                string expr1 = define(child1, output);
+                string expr2 = define(child2, output);
+                string expr3 = define(child3, output);
+                string expr4 = define(child4, output);
+                definedExpressions.insert(expr1);
+                definedExpressions.insert(expr2);
+                definedExpressions.insert(expr3);
+                definedExpressions.insert(expr4);
+                output.push_back("t" + to_string(root->id) + " = AO122 " + expr1 + " " + expr2 + " " + expr3 + " " + expr4);
+                return "t" + to_string(root->id);
+            }
+        }
+
+    }
+
+    string traceback(int i, ofstream& netlist)
+    {
+        // // Get the row array
+        // minCost = getMin(row);
+        // minIndex = getMinIndex(row);
         
-        // Get the children
-        vector<Node*> children = getChildren(minCost, minIndex, row, tab);
-        for(int i=0; i<tab; i++){
-            cout << "\t";
-        }
-        cout << "Found node: " << nodeLookup[row]->name << endl;
-        tab++;
-        for (int i = 0; i < children.size(); i++)
-        {   
-            for(int i=0; i<tab; i++){
-                cout << "\t";
-            }
-            cout << "Child: " << i << endl;
-            if(children[i]->id == 0){
-                for(int i=0; i<tab; i++){
-                    cout << "\t";
-                }
-                cout << "Found primary input: " << children[i]->name << endl;
-            }else{
-                traceback(children[i]->id, tab);
-            }
-        }
+        // // Get the children
+        // vector<Node*> children = getChildren(minCost, minIndex, row, tab);
+        // for(int i=0; i<tab; i++){
+        //     cout << "\t";
+        // }
+        // cout << "Found node: " << nodeLookup[row]->name << endl;
+        // tab++;
+        // for (int i = 0; i < children.size(); i++)
+        // {   
+        //     for(int i=0; i<tab; i++){
+        //         cout << "\t";
+        //     }
+        //     cout << "Child: " << i << endl;
+        //     if(children[i]->id == 0){
+        //         for(int i=0; i<tab; i++){
+        //             cout << "\t";
+        //         }
+        //         cout << "Found primary input: " << children[i]->name << endl;
+        //     }else{
+        //         traceback(children[i]->id, tab);
+        //     }
+        // }
+
+        
 
     }
 
@@ -221,6 +360,15 @@ public:
             }
             cout << endl;
         }
-        traceback(numberOfNandNotNodes);
+        vector<string> output;
+        define(nodeLookup[numberOfNandNotNodes], output);
+        ofstream netlist("output.net");
+        for (int i = 0; i < output.size(); i++)
+        {
+            netlist << output[i];
+            if (i < output.size() - 1)
+                netlist << endl;
+        }
+        netlist.close();
     }
 };
