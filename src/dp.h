@@ -1,4 +1,5 @@
 #include <fstream>
+#include <vector>
 #include <unordered_set>
 
 #include "node.h"
@@ -6,26 +7,26 @@
 using namespace std;
 
 const int infinity = 99999999;
-static unordered_set<string> definedExpressions;
 
 class dp
 {
     // member variables
     int **A, minCost, minIndex;
+    unordered_set<string> definedExpressions;
 
     // utility function to allocate 2D dp array
     void allocate2DArray()
     {
         A = new int*[numberOfNandNotNodes + 1];
 
-        for (int i = 0; i <= numberOfNandNotNodes; i++)
+        for (unsigned int i = 0; i <= numberOfNandNotNodes; i++)
             A[i] = new int[8];
     }
 
     // utility function to delete 2D dp array
     void deallocate2DArray()
     {
-        for (int i = 0; i <= numberOfNandNotNodes; i++)
+        for (unsigned int i = 0; i <= numberOfNandNotNodes; i++)
             delete[] A[i];
 
         delete[] A;
@@ -61,7 +62,7 @@ class dp
     // solves problem using bottom-up dynamic programming for recurrence relation
     void solve()
     {
-        for (int i = 0; i <= numberOfNandNotNodes; i++)
+        for (unsigned int i = 0; i <= numberOfNandNotNodes; i++)
         {
             for (int j = 0; j <= 7; j++)
             {
@@ -112,63 +113,8 @@ class dp
         minIndex = getMinIndex(numberOfNandNotNodes);
     }
 
-    // get the children given a cost of the symbol
-    vector<Node*> getChildren(int cost, int index, int nodeIndex, int tab=0)
-    {
-        vector<Node*> children;
-        //tab
-        for(int i=0; i<tab; i++){
-            cout << "\t";
-        }
-        if(index==6){
-            // AO121 Gate
-            children.push_back(nodeLookup[nodeIndex]->left->left->left);
-            children.push_back(nodeLookup[nodeIndex]->left->left->right);
-            children.push_back(nodeLookup[nodeIndex]->left->right->left);
-            cout << "AO121 Gate" << endl;
-        }
-        else if(index==7){
-            // AO122 Gate
-            children.push_back(nodeLookup[nodeIndex]->left->left->left);
-            children.push_back(nodeLookup[nodeIndex]->left->left->right);
-            children.push_back(nodeLookup[nodeIndex]->left->right->left);
-            children.push_back(nodeLookup[nodeIndex]->left->right->right);
-            cout << "AO122 Gate" << endl;
-        }
-        else if(index==5){
-            // OR2
-            children.push_back(nodeLookup[nodeIndex]->left->left);
-            children.push_back(nodeLookup[nodeIndex]->right->left);
-            cout << "OR2 Gate" << endl;
-        }
-        else if(index==4){
-            // NOR2 gate
-            children.push_back(nodeLookup[nodeIndex]->left->left->left);
-            children.push_back(nodeLookup[nodeIndex]->left->right->left);
-            cout << "NOR2 Gate" << endl;
-        }
-        else if(index==3){
-            // AND2 gate
-            children.push_back(nodeLookup[nodeIndex]->left->left);
-            children.push_back(nodeLookup[nodeIndex]->left->right);
-            cout << "AND2 Gate" << endl;
-        }
-        else if(index==2){
-            // NAND2 gate
-            children.push_back(nodeLookup[nodeIndex]->left);
-            children.push_back(nodeLookup[nodeIndex]->right);
-            cout << "NAND2 Gate" << endl;
-        }
-        else if(index==1){
-            // NOT Gate
-            children.push_back(nodeLookup[nodeIndex]->left);
-            cout << "NOT Gate" << endl;
-        }
-        return children;
-    }
-
     // utility to determine if an expression has been defined
-    static bool isDefined(Node* node)
+    bool isDefined(Node* node)
     {
         string expressionName;
         if (node->op == Operator::INPUT)
@@ -182,8 +128,10 @@ class dp
             return false;
     }
 
+    // places defintion of current node into netlist output vector
     string define(Node* root, vector<string>& output)
     {
+        // OUTPUT expression must be defined first
         static bool isOutputDefined = false;
         if (!isOutputDefined)
         {
@@ -205,21 +153,24 @@ class dp
         // else write definition
         switch (getMinIndex(root->id))
         {
-            case 0: 
+            case 0: // INPUT
             {
                 output.push_back(root->name + " INPUT");
                 // definedExpressions.insert(root->name); // try commenting this out seems unnecessary
                 return root->name;
             }
-            case 1:
+            case 1: // NOT gate definition
             {
                 Node* child1 = root->left;
                 string expr1 = define(child1, output);
                 definedExpressions.insert(expr1);
-                output.push_back("t" + to_string(root->id) + " = NOT " + expr1);
+                if (root->id == numberOfNandNotNodes)
+                    output.push_back(root->name + " = NOT " + expr1);
+                else
+                    output.push_back("t" + to_string(root->id) + " = NOT " + expr1);
                 return "t" + to_string(root->id);
             }
-            case 2:
+            case 2: // NAND2 gate definition
             {
                 Node* child1 = root->left;
                 Node* child2 = root->right;
@@ -227,10 +178,13 @@ class dp
                 string expr2 = define(child2, output);
                 definedExpressions.insert(expr1);
                 definedExpressions.insert(expr2);
-                output.push_back("t" + to_string(root->id) + " = NAND2 " + expr1 + " " + expr2);
+                if (root->id == numberOfNandNotNodes)
+                    output.push_back(root->name + " = NAND2 " + expr1 + " " + expr2);
+                else
+                    output.push_back("t" + to_string(root->id) + " = NAND2 " + expr1 + " " + expr2);
                 return "t" + to_string(root->id);
             }
-            case 3:
+            case 3: // AND2 gate definition
             {
                 Node* child1 = root->left->left;
                 Node* child2 = root->left->right;
@@ -238,10 +192,13 @@ class dp
                 string expr2 = define(child2, output);
                 definedExpressions.insert(expr1);
                 definedExpressions.insert(expr2);
-                output.push_back("t" + to_string(root->id) + " = AND2 " + expr1 + " " + expr2);
+                if (root->id == numberOfNandNotNodes)
+                    output.push_back(root->name + " = AND2 " + expr1 + " " + expr2);
+                else
+                    output.push_back("t" + to_string(root->id) + " = AND2 " + expr1 + " " + expr2);
                 return "t" + to_string(root->id);
             }
-            case 4:
+            case 4: // NOR2 gate definition
             {
                 Node* child1 = root->left->left->left;
                 Node* child2 = root->left->right->left;
@@ -249,10 +206,13 @@ class dp
                 string expr2 = define(child2, output);
                 definedExpressions.insert(expr1);
                 definedExpressions.insert(expr2);
-                output.push_back("t" + to_string(root->id) + " = NOR2 " + expr1 + " " + expr2);
+                if (root->id == numberOfNandNotNodes)
+                    output.push_back(root->name + " = NOR2 " + expr1 + " " + expr2);
+                else
+                    output.push_back("t" + to_string(root->id) + " = NOR2 " + expr1 + " " + expr2);
                 return "t" + to_string(root->id);
             }
-            case 5:
+            case 5: // OR2 gate definition
             {
                 Node* child1 = root->left->left;
                 Node* child2 = root->right->left;
@@ -260,10 +220,13 @@ class dp
                 string expr2 = define(child2, output);
                 definedExpressions.insert(expr1);
                 definedExpressions.insert(expr2);
-                output.push_back("t" + to_string(root->id) + " = OR2 " + expr1 + " " + expr2);
+                if (root->id == numberOfNandNotNodes)
+                    output.push_back(root->name + " = OR2 " + expr1 + " " + expr2);
+                else
+                    output.push_back("t" + to_string(root->id) + " = OR2 " + expr1 + " " + expr2);
                 return "t" + to_string(root->id);
             }
-            case 6:
+            case 6: // AO121 gate definition
             {
                 Node* child1 = root->left->left->left;
                 Node* child2 = root->left->left->right;
@@ -274,10 +237,13 @@ class dp
                 definedExpressions.insert(expr1);
                 definedExpressions.insert(expr2);
                 definedExpressions.insert(expr3);
-                output.push_back("t" + to_string(root->id) + " = AO121 " + expr1 + " " + expr2 + " " + expr3);
+                if (root->id == numberOfNandNotNodes)
+                    output.push_back(root->name + " = AO121 " + expr1 + " " + expr2 + " " + expr3);
+                else
+                    output.push_back("t" + to_string(root->id) + " = AO121 " + expr1 + " " + expr2 + " " + expr3);
                 return "t" + to_string(root->id);
             }
-            case 7:
+            case 7: // AO122 gate definition
             {
                 Node* child1 = root->left->left->left;
                 Node* child2 = root->left->left->right;
@@ -291,44 +257,39 @@ class dp
                 definedExpressions.insert(expr2);
                 definedExpressions.insert(expr3);
                 definedExpressions.insert(expr4);
-                output.push_back("t" + to_string(root->id) + " = AO122 " + expr1 + " " + expr2 + " " + expr3 + " " + expr4);
+                if (root->id == numberOfNandNotNodes)
+                    output.push_back(root->name + " = AO122 " + expr1 + " " + expr2 + " " + expr3 + " " + expr4);
+                else
+                    output.push_back("t" + to_string(root->id) + " = AO122 " + expr1 + " " + expr2 + " " + expr3 + " " + expr4);
                 return "t" + to_string(root->id);
             }
         }
-
+        return string();
     }
 
-    string traceback(int i, ofstream& netlist)
+    void printSolution()
     {
-        // // Get the row array
-        // minCost = getMin(row);
-        // minIndex = getMinIndex(row);
-        
-        // // Get the children
-        // vector<Node*> children = getChildren(minCost, minIndex, row, tab);
-        // for(int i=0; i<tab; i++){
-        //     cout << "\t";
-        // }
-        // cout << "Found node: " << nodeLookup[row]->name << endl;
-        // tab++;
-        // for (int i = 0; i < children.size(); i++)
-        // {   
-        //     for(int i=0; i<tab; i++){
-        //         cout << "\t";
-        //     }
-        //     cout << "Child: " << i << endl;
-        //     if(children[i]->id == 0){
-        //         for(int i=0; i<tab; i++){
-        //             cout << "\t";
-        //         }
-        //         cout << "Found primary input: " << children[i]->name << endl;
-        //     }else{
-        //         traceback(children[i]->id, tab);
-        //     }
-        // }
+        if (numberOfNandNotNodes == 0)
+        {
+            ofstream netlist("output.net");
+            netlist.close();
+            cout << "Mimimum cost: 0" << endl;
+            return;
+        }
 
-        
+        vector<string> output;
+        define(nodeLookup[numberOfNandNotNodes], output);
+        ofstream netlist("output.net");
+        for (long long unsigned int i = 0; i < output.size(); i++)
+        {
+            netlist << output[i];
+            if (i < output.size() - 1)
+                netlist << endl;
+        }
+        netlist.close();
 
+        // print mimumum cost
+        cout << "Minimum cost: " << minCost << endl;
     }
 
 public:
@@ -337,38 +298,6 @@ public:
     {
         allocate2DArray();
         solve();
-        // print out the minimum cost table with proper formatting and prints out inf if infinity. Also should print row label which is name of node at that index
-        cout << "Minimum Cost Table" << endl;
-        cout << "------------------" << endl;
-        cout << "Node\t";
-        for (int i = 0; i <= 7; i++)
-            cout << i << "\t";
-        cout << endl;
-        for (int i = 0; i <= numberOfNandNotNodes; i++)
-        {
-            if(i==0){
-                cout << "Primary Inputs\t";
-            }else{
-            cout << nodeLookup[i]->name << "\t";
-            for (int j = 0; j <= 7; j++)
-            {
-                if (A[i][j] == infinity)
-                    cout << "inf\t";
-                else
-                    cout << A[i][j] << "\t";
-            }
-            }
-            cout << endl;
-        }
-        vector<string> output;
-        define(nodeLookup[numberOfNandNotNodes], output);
-        ofstream netlist("output.net");
-        for (int i = 0; i < output.size(); i++)
-        {
-            netlist << output[i];
-            if (i < output.size() - 1)
-                netlist << endl;
-        }
-        netlist.close();
+        printSolution();
     }
 };

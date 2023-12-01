@@ -1,14 +1,15 @@
+#pragma once
+
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <vector>
 #include <unordered_map>
-#include "json.hpp" // You might need a library like jsoncpp for this
+#include <algorithm>
 
 using namespace std;
-using json = nlohmann::json;
 
-// forward declaration
+// forward declaration of Node for static variables
 class Node;
 
 // operator enum declaration
@@ -21,163 +22,16 @@ enum class Operator
     INPUT
 };
 
-static int numberOfNandNotNodes = 0;
+// static counter variables
+static unsigned int numberOfNandNotNodes = 0;
+
+// static container variables
 static unordered_map<string, Node *> constructedNodes;
 static unordered_map<int, Node *> nodeLookup;
 
-string operatorToString(Operator op)
-{
-    switch (op)
-    {
-    case Operator::AND:
-        return "AND";
-    case Operator::OR:
-        return "OR";
-    case Operator::NOT:
-        return "NOT";
-    case Operator::NAND:
-        return "NAND";
-    case Operator::INPUT:
-        return "INPUT";
-    default:
-        return "UNKNOWN";
-    }
-}
-
-class Node
+struct Node
 {
     // member variables
-
-    // construct root from OUTPUT line
-    static Node *constructRoot(vector<string> &netlistLines)
-    {
-        int i = 0;
-        for (auto it = netlistLines.begin(); it != netlistLines.end(); ++it, i++)
-        {
-            string line = netlistLines[i];
-
-            // INPUT / OUTPUT line
-            if (line.find('=') == string::npos)
-            {
-                istringstream stream(line);
-                string expr, put;
-
-                if (!(stream >> expr >> put) || (put != "INPUT" && put != "OUTPUT"))
-                    throw invalid_argument("Netlist file invalid\n");
-
-                if (put == "OUTPUT")
-                {
-                    netlistLines.erase(it);
-
-                    Node *root = new Node(expr, nullptr);
-                    constructedNodes[expr] = root;
-                    return root;
-                }
-            }
-        }
-        throw invalid_argument("Netlist file does not contain OUTPUT expression\n");
-    }
-
-    static Node *constructDAGFromRoot(Node *root, vector<string> &netlistLines)
-    {
-        int i = 0;
-        for (auto it = netlistLines.begin(); it != netlistLines.end(); ++it, i++)
-        {
-            if (netlistLines.size() == 0)
-                return root;
-
-            string line = netlistLines[i];
-            istringstream stream(line);
-
-            // gate logic line
-            if (line.find('=') != string::npos)
-            {
-                string name, equals, op, expr1, expr2;
-
-                if (!(stream >> name >> equals >> op) || equals != "=")
-                    throw invalid_argument("Netlist file invalid\n");
-
-                if (name == root->name)
-                {
-                    netlistLines.erase(it);
-
-                    if (op == "NOT")
-                    {
-                        if (!(stream >> expr1) || stream >> expr2)
-                            throw invalid_argument("Netlist file invalid\n");
-
-                        root->op = Operator::NOT;
-
-                        if (constructedNodes.find(expr1) == constructedNodes.end())
-                        {
-                            Node *left = new Node(expr1, root);
-                            constructedNodes[expr1] = left;
-                            root->left = constructDAGFromRoot(left, netlistLines);
-                        }
-                        else
-                            root->left = constructedNodes[expr1];
-
-                        root->right = nullptr;
-
-                        return root;
-                    }
-                    else if (op == "AND" || op == "OR")
-                    {
-                        if (!(stream >> expr1 >> expr2))
-                            throw invalid_argument("Netlist file invalid\n");
-
-                        root->op = op == "AND" ? Operator::AND : Operator::OR;
-
-                        if (constructedNodes.find(expr1) == constructedNodes.end())
-                        {
-                            Node *left = new Node(expr1, root);
-                            constructedNodes[expr1] = left;
-                            root->left = constructDAGFromRoot(left, netlistLines);
-                        }
-                        else
-                            root->left = constructedNodes[expr1];
-
-                        if (constructedNodes.find(expr2) == constructedNodes.end())
-                        {
-                            Node *right = new Node(expr2, root);
-                            constructedNodes[expr2] = right;
-                            root->right = constructDAGFromRoot(right, netlistLines);
-                        }
-                        else
-                            root->right = constructedNodes[expr2];
-
-                        return root;
-                    }
-                }
-            }
-            // INPUT / OUTPUT line
-            else
-            {
-                string name, put;
-
-                if (!(stream >> name >> put) || (put != "INPUT" && put != "OUTPUT"))
-                    throw invalid_argument("Netlist file invalid\n");
-
-                if (put == "INPUT")
-                {
-                    if (name == root->name)
-                    {
-                        netlistLines.erase(it);
-
-                        root->op = Operator::INPUT;
-                        root->left = nullptr;
-                        root->right = nullptr;
-                        return root;
-                    }
-                }
-                else
-                    throw invalid_argument("Netlist cannot contain 2 OUTPUT declarations\n");
-            }
-        }
-        throw invalid_argument("Netlist file contains invalid expression declaration\n");
-    }
-
-public:
     Operator op;
     unsigned int id;
     Node *parent;
@@ -191,69 +45,151 @@ public:
         this->parent = parent;
     }
 
-    static void saveDAG(Node *root)
+    // construct root from OUTPUT line
+    static Node *constructRoot(vector<string> &netlistLines)
     {
-        json j;
-
-        // Recursive lambda function for depth-first traversal and serialization
-        std::function<void(Node *, json &)> dfs = [&](Node *node, json &jsonObj)
+        int i = 0;
+        for (auto it = netlistLines.begin(); it != netlistLines.end(); ++it, i++)
         {
-            if (!node)
-            {
-                std::cout << "Null node encountered, returning." << std::endl;
-                return;
-            }
+            string line = netlistLines[i];
 
-            std::cout << "Serializing node with name: " << node->name << std::endl;
-            // Serialize current node
-            jsonObj["name"] = node->name;
-            jsonObj["operator"] = operatorToString(node->op);
-
-            // Recursively serialize left child if it exists
-            if (node->left)
+            // if line is a declaration
+            if (line.find('=') == string::npos)
             {
-                std::cout << "Traversing left child of node: " << node->name << std::endl;
-                json leftChild;
-                dfs(node->left, leftChild);
-                jsonObj["left"] = leftChild;
-            }
-            else
-            {
-                std::cout << "Left child of node " << node->name << " is null." << std::endl;
-                // If left child does not exist, set it to null in JSON
-                jsonObj["left"] = nullptr;
-            }
+                istringstream stream(line);
 
-            // Recursively serialize right child if it exists
-            if (node->right)
-            {
-                std::cout << "Traversing right child of node: " << node->name << std::endl;
-                json rightChild;
-                dfs(node->right, rightChild);
-                jsonObj["right"] = rightChild;
-            }
-            else
-            {
-                std::cout << "Right child of node " << node->name << " is null." << std::endl;
-                // If right child does not exist, set it to null in JSON
-                jsonObj["right"] = nullptr;
-            }
-        };
+                // parts of a declaration line
+                string expr, put;
 
-        // Start the serialization from the root
-        dfs(root, j);
+                // missing INPUT or OUTPUT specifier
+                if (!(stream >> expr >> put) || (put != "INPUT" && put != "OUTPUT"))
+                    throw invalid_argument("Netlist file invalid\n");
 
-        // Write the serialized JSON to a file
-        std::ofstream file("dag.json");
-        if (file.is_open())
-        {
-            file << j.dump(4); // Dump with indentation for readability
-            file.close();
+                if (put == "OUTPUT")
+                {
+                    netlistLines.erase(it);
+
+                    // construct root node
+                    Node *root = new Node(expr, nullptr);
+                    constructedNodes[expr] = root;
+
+                    return root;
+                }
+            }
         }
-        else
+        throw invalid_argument("Netlist file does not contain OUTPUT expression\n");
+    }
+
+    static Node *constructDAGFromRoot(Node *root, vector<string> &netlistLines)
+    {
+        // find line in netlist for the current node
+        int i = 0;
+        for (auto it = netlistLines.begin(); it != netlistLines.end(); ++it, i++)
         {
-            throw std::runtime_error("Unable to open file for writing.");
+            // base case: all lines parsed
+            if (netlistLines.size() == 0)
+                return root;
+
+            string line = netlistLines[i];
+            istringstream stream(line);
+
+            // two kinds of lines: definition and declaration
+            if (line.find('=') != string::npos)
+            {
+                // tokens in a definition
+                string name, equals, op, expr1, expr2;
+
+                if (!(stream >> name >> equals >> op) || equals != "=")
+                    throw invalid_argument("Netlist file invalid\n");
+
+                // if this line is the definition of current expression
+                if (name == root->name)
+                {
+                    netlistLines.erase(it);
+
+                    // NOT gate
+                    if (op == "NOT")
+                    {
+                        // wrong number of arguments
+                        if (!(stream >> expr1) || stream >> expr2)
+                            throw invalid_argument("Netlist file invalid\n");
+
+                        // construct child
+                        root->op = Operator::NOT;
+                        if (constructedNodes.find(expr1) == constructedNodes.end())
+                        {
+                            Node *left = new Node(expr1, root);
+                            constructedNodes[expr1] = left;
+                            root->left = constructDAGFromRoot(left, netlistLines);
+                        }
+                        else
+                            root->left = constructedNodes[expr1];
+                        root->right = nullptr;
+                    }
+                    // AND & OR gate
+                    else if (op == "AND" || op == "OR")
+                    {
+                        // wrong number of arguments
+                        if (!(stream >> expr1 >> expr2))
+                            throw invalid_argument("Netlist file invalid\n");
+
+                        // construct AND or OR node
+                        root->op = op == "AND" ? Operator::AND : Operator::OR;
+
+                        // construct left child
+                        if (constructedNodes.find(expr1) == constructedNodes.end())
+                        {
+                            Node *left = new Node(expr1, root);
+                            constructedNodes[expr1] = left;
+                            root->left = constructDAGFromRoot(left, netlistLines);
+                        }
+                        else
+                            root->left = constructedNodes[expr1];
+
+                        // construct right child
+                        if (constructedNodes.find(expr2) == constructedNodes.end())
+                        {
+                            Node *right = new Node(expr2, root);
+                            constructedNodes[expr2] = right;
+                            root->right = constructDAGFromRoot(right, netlistLines);
+                        }
+                        else
+                            root->right = constructedNodes[expr2];
+                    }
+
+                    // return parent of newly-constructed node
+                    return root;
+                }
+            }
+            else // line is a declaration
+            {
+                // tokens in a declaration
+                string name, put;
+
+                // wrong number of arguments
+                if (!(stream >> name >> put) || (put != "INPUT" && put != "OUTPUT"))
+                    throw invalid_argument("Netlist file invalid\n");
+
+                if (put == "INPUT")
+                {
+                    // if this line is the declaration of the current expression
+                    if (name == root->name)
+                    {
+                        netlistLines.erase(it);
+
+                        // construct INPUT node
+                        root->op = Operator::INPUT;
+                        root->left = nullptr;
+                        root->right = nullptr;
+
+                        return root;
+                    }
+                }
+                else
+                    throw invalid_argument("Netlist cannot contain 2 OUTPUT declarations\n");
+            }
         }
+        throw invalid_argument("Netlist file contains invalid expression declaration\n");
     }
 
     static Node *constructAndOrNotDAG(string filePath)
@@ -327,87 +263,13 @@ public:
         return root;
     }
 
-    bool evaluate(const unordered_map<string, bool> &inputValues)
-    {
-        switch (op)
-        {
-        case Operator::AND:
-            return left->evaluate(inputValues) && right->evaluate(inputValues);
-        case Operator::OR:
-            return left->evaluate(inputValues) || right->evaluate(inputValues);
-        case Operator::NOT:
-            return !left->evaluate(inputValues);
-        case Operator::NAND:
-            return !(left->evaluate(inputValues) && right->evaluate(inputValues));
-        case Operator::INPUT:
-            return inputValues.at(name);
-        default:
-            throw runtime_error("Unknown operator.");
-        }
-    }
-
-    static void dynamicCostCalculation()
-    {
-        // Get to bottom of tree
-        Node *currentNode = nodeLookup[0];
-        while (currentNode->left != nullptr)
-        {
-            currentNode = currentNode->left;
-        }
-    }
-
-    static void outputTruthTable(Node *root)
-    {
-        if (!root)
-        {
-            throw runtime_error("The root node cannot be null.");
-        }
-
-        // Step 1: Collect all input nodes
-        vector<string> inputs;
-        unordered_map<string, Node *> nodes;
-        std::function<void(Node *)> collectInputs = [&](Node *node)
-        {
-            if (!node)
-                return;
-            if (node->op == Operator::INPUT && find(inputs.begin(), inputs.end(), node->name) == inputs.end())
-            {
-                inputs.push_back(node->name);
-            }
-            nodes[node->name] = node;
-            collectInputs(node->left);
-            collectInputs(node->right);
-        };
-        collectInputs(root);
-
-        // Step 2: Generate all possible input combinations
-        size_t numInputs = inputs.size();
-        size_t numCombinations = 1 << numInputs; // 2^n combinations
-
-        // Step 3: Evaluate the logical expression for each combination
-        for (size_t i = 0; i < numCombinations; ++i)
-        {
-            unordered_map<string, bool> inputValues;
-            cout << "Inputs: ";
-            for (size_t j = 0; j < numInputs; ++j)
-            {
-                bool value = (i >> j) & 1;
-                inputValues[inputs[j]] = value;
-                cout << inputs[j] << "=" << value << " ";
-            }
-
-            // Evaluate the expression for the current combination
-            bool result = root->evaluate(inputValues);
-            cout << "Output: " << result << endl;
-        }
-    }
-
-    // Helper function to check if a node is a NAND gate with both inputs the same
+    // utility function to check if a node is a NAND gate with both inputs the same
     static bool isNandWithSameInputs(Node *node)
     {
         return node->op == Operator::NAND && node->left == node->right;
     }
 
+    // utility function to check if a NOT node has a NOT child
     static bool isDoubleNot(Node *node)
     {
         return node->op == Operator::NOT && node->left && node->left->op == Operator::NOT;
@@ -417,9 +279,7 @@ public:
     {
         // Base case: node doesn't exist
         if (!root)
-        {
             return nullptr;
-        }
 
         // Recursively simplify children
         root->left = simplify(root->left);
@@ -462,6 +322,7 @@ public:
         return root;
     }
 
+    // depth first search for ordering nodes from OUTPUT node
     static void dfs(Node *node, std::vector<Node *> &sorted)
     {
         if (!node)
@@ -483,7 +344,7 @@ public:
         dfs(root, sorted);
 
         // reverse the order to get topological sort
-        std::reverse(sorted.begin(), sorted.end());
+        reverse(sorted.begin(), sorted.end());
 
         // assign IDs
         int id = numberOfNandNotNodes;
@@ -496,12 +357,6 @@ public:
                 nodeLookup[id] = node;
                 node->id = id--;
             }
-        }
-
-        // Print out what ids are assigned to what nodes
-        for (auto node : sorted)
-        {
-            cout << node->name << " " << node->id << endl;
         }
     }
 };
