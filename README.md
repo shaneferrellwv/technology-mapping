@@ -11,7 +11,7 @@ This C++ project performs technology mapping to determine the minimum cost for c
 Clone the repository to your local machine and build the project using a C++ compiler.
 
 ```
-g++ main.cpp -o techmap
+g++ -std=c++11 main.cpp -o techmap
 ```
 
 ## Usage
@@ -24,7 +24,7 @@ Run the executable in the command line.
 Enter the name of the file containing the netlist when prompted. If no filename is entered, ```input1.net``` is used by default.
 
 ## Input File Format
-The input file should be a netlist describing the circuit with AND, OR, and NOT gates. The netlist file should contain exactly one OUTPUT expression declaration and at least one INPUT expression delcaration. All expressions in the netlist representing AND, OR, or NOT gates should be previously defined using the ```=``` token.
+The input file should be a netlist describing the circuit with AND, OR, and NOT gates. The netlist file should contain exactly one OUTPUT expression declaration and at least one INPUT expression delcaration. All expressions in the netlist representing AND, OR, or NOT gates should be previously defined using the ```=``` token, followed by exactly one ```AND```, ```OR```, or ```NOT``` token and an appropriate number of inputs for that gate.
 
 ## Output
 The program outputs to ```output.net```, which describes the netlist using the minimum cost combination of NAND/NOT gates, and prints the minimum cost to the console.
