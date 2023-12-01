@@ -27,7 +27,7 @@ Enter the name of the file containing the netlist when prompted. If no filename 
 The input file should be a netlist describing the circuit with AND, OR, and NOT gates. The netlist file should contain exactly one OUTPUT expression declaration and at least one INPUT expression delcaration. All expressions in the netlist representing AND, OR, or NOT gates should be previously defined using the ```=``` token, followed by exactly one ```AND```, ```OR```, or ```NOT``` token and an appropriate number of inputs for that gate.
 
 ## Output
-The program outputs to ```output.net```, which describes the netlist using the minimum cost combination of NAND/NOT gates, and prints the minimum cost to the console.
+The program outputs to ```output.net```, which describes the netlist using the minimum cost combination of NAND/NOT gates from the technology library, and prints the minimum cost to the console. The “technology library” includes NOT, NAND2, AND2, NOR2, OR2, AO121 and AO122 functions with respective costs 2, 3, 4, 6, 4, 7, and 7.
 
 ## Components
 + ```main.cpp```: Program entry point. Manages file input and begins the mapping process.
